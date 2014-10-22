@@ -1,7 +1,7 @@
 
 require_relative 'core'
 
-module STM::Util
+module STM
   # Public: Replace the named method with a wrapper that runs the body of the
   # method in a transaction. This can be used like:
   #
@@ -18,7 +18,9 @@ module STM::Util
   # to get the same effect as:
   #
   #   def foo(bar, baz)
-  #     ...
+  #     atomically do
+  #       ...
+  #     end
   #   end
   def transactional(method_name)
     raise NotImplementedError
@@ -44,7 +46,7 @@ module STM::Util
     end
     
     def according_to(predicate, &predicate_as_block)
-      STM::Util.changes_only(@proc, predicate || &predicate)
+      STM.changes_only(@proc, predicate || &predicate)
     end
   end
   

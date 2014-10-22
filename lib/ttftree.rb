@@ -41,11 +41,6 @@ module TTFTree
   end
   
   module Measures
-    def self.item_count
-      # Probably ought to make this a constant
-      Measure.new ->(v){ 1 }, ->(a, b){ a + b }, 0
-    end
-    
     def self.from_semigroup(convert, operator)
       Measure.new convert, ->(a, b){
         if a == IDENTITY
@@ -57,14 +52,10 @@ module TTFTree
         end
       }, IDENTITY 
     end
-    
-    def self.last_item
-      from_semigroup ->(v){ v }, ->(a, b){ b }
-    end
-    
-    def self.min_max
-      from_semigroup ->(v){ v }, ->(a, b){ [[a, b].min, [a, b].max] }
-    end
+
+    ITEM_COUNT = Measure.new ->(v){ 1 }, ->(a, b){ a + b }, 0
+    LAST_ITEM = from_semigroup ->(v){ v }, ->(a, b){ b }
+    MIN_MAX = from_semigroup ->(v){ v }, ->(a, b){ [[a, b].min, [a, b].max] }
     
     def self.translate measure
       Measure.new ->(v){
@@ -131,7 +122,7 @@ module TTFTree
   end
   
   class Tree
-    attr_reader :annotation
+    attr_reader :measure, :annotation
     
     def initialize(measure, annotation)
       @measure = measure
