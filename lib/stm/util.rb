@@ -22,12 +22,12 @@ module STM
   #       ...
   #     end
   #   end
-  def transactional(method_name)
+  def self.transactional(method_name)
     raise NotImplementedError
   end
   
   
-  def wait_until(seconds: nil, time: nil)
+  def self.wait_until(seconds: nil, time: nil)
     STM.atomically do
       unless yield
         if STM.elapsed(seconds: seconds, time: time)
@@ -46,12 +46,12 @@ module STM
     end
     
     def according_to(predicate, &predicate_as_block)
-      STM.changes_only(@proc, predicate || &predicate)
+      STM.changes_only(@proc, predicate || predicate_as_block)
     end
   end
   
   
-  def changes_only(proc=nil, according_to: nil, &proc_as_block)
+  def self.changes_only(proc=nil, according_to: nil, &proc_as_block)
     unless according_to
       return ChangesOnlyPartialArguments.new(proc || proc_as_block)
     end

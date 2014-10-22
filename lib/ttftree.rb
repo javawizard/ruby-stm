@@ -327,7 +327,7 @@ module TTFTree
       spine = self.spine
       
       until middle_items.empty?
-        if middle_items.length == 2 || middle_items.length || 4
+        if middle_items.length == 2 || middle_items.length == 4
           spine = spine.add_last Node.new @measure, *middle_items[0..1]
           middle_items.slice! 0..1
         else
