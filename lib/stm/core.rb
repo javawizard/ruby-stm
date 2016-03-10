@@ -5,7 +5,7 @@ module STM
   @last_transaction = 0
   GLOBAL_LOCK = Mutex.new
 
-  # Internal: ...
+  # ...
   def self.last_transaction
     @last_transaction
   end
@@ -15,14 +15,14 @@ module STM
   end
 
 
-  # Internal: Exception raised when a transaction needs to restart. This
+  # Exception raised when a transaction needs to restart. This
   # happens when an attempt is made to read a variable that has been modified
   # since the transaction started. It also happens just after the transaction
   # has finished blocking in response to a TryLater.
   class Restart < Exception
   end
 
-  # Internal: Exception Raised when a transaction should retry at some later
+  # Exception Raised when a transaction should retry at some later
   # point, when at least one of the variables it accessed has been modified.
   # This happens when try_later() is called, and causes the toplevel
   # transaction to block until one of the variables accessed in this
@@ -32,7 +32,7 @@ module STM
   end
 
 
-  # Internal: Set the current thread-local transaction to the specified
+  # Set the current thread-local transaction to the specified
   # value.
   def self.set_current_transaction(transaction)
     # I'm not annoyed that Thread.current[] forces keys to be symbols instead
@@ -40,13 +40,13 @@ module STM
     Thread.current[:a_really_long_and_unlikely_to_be_reused_stm_symbol] = transaction
   end
 
-  # Internal: Get and return the current thread-local transaction, or return
+  # Get and return the current thread-local transaction, or return
   # nil if there isn't currently a transaction.
   def self.try_to_get_current_transaction
     Thread.current[:a_really_long_and_unlikely_to_be_reused_stm_symbol]
   end
 
-  # Internal: Get and return the current thread-local transaction, or raise an
+  # Get and return the current thread-local transaction, or raise an
   # exception if there isn't currently a transaction.
   def self.get_current_transaction
     transaction = try_to_get_current_transaction
@@ -55,7 +55,7 @@ module STM
     transaction
   end
 
-  # Internal: Run a block with the current transaction set to the specified
+  # Run a block with the current transaction set to the specified
   # transaction, then restore the current transaction to what it was previously
   # at the end of the block.
   def self.with_current_transaction transaction
@@ -70,7 +70,7 @@ module STM
   end
 
 
-  # Internal: ...
+  # ...
   #
   # This was actually a superclass in the Python version that had several
   # implementations, one of which would be selected for use depending on
@@ -113,7 +113,7 @@ module STM
   end
 
 
-  # Internal: ...
+  # ...
   #
   # TODO: Make this a single thread that holds a priority queue of all
   # watchers waiting to be notified and notifies each of them as they expire
@@ -136,18 +136,18 @@ module STM
       end
     end
 
-    # Internal: For compatibility with Transaction.modified_set
+    # For compatibility with Transaction.modified_set
     def watchers
       [@watcher]
     end
 
-    # Internal: For compatibility with Transaction.modified_set
+    # For compatibility with Transaction.modified_set
     def check_clean
     end
   end
 
 
-  # Internal: ...
+  # ...
   class Transaction
     attr_reader :read_set, :modified_set, :proposed_watchers, :resume_at, :watcher_resume_at
 
@@ -252,7 +252,7 @@ module STM
   end
 
 
-  # Internal: ...
+  # ...
   class BaseTransaction < Transaction
     attr_reader :start, :next_start_time
 
@@ -429,7 +429,7 @@ module STM
   end
 
 
-  # Internal: ...
+  # ...
   class NestedTransaction < Transaction
     attr_reader :base
 
@@ -478,14 +478,14 @@ module STM
   end
 
 
-  # Public: A transactional variable.
+  # A transactional variable.
   class TVar
-    # Internal: ...
+    # ...
     attr_reader :real_value, :watchers, :waiters
-    # Internal: ...
+    # ...
     attr_accessor :modified
 
-    # Public: Create a TVar with the specified initial value.
+    # Create a TVar with the specified initial value.
     def initialize(value=nil)
       @real_value = value
       @modified = 0
@@ -493,14 +493,14 @@ module STM
       @watchers = Set.new
     end
 
-    # Public: Return the current value of this TVar.
+    # Return the current value of this TVar.
     def get
       STM.possibly_atomically do
         STM.get_current_transaction.get_value(self)
       end
     end
 
-    # Public: Set the value of this TVar to the specified value.
+    # Set the value of this TVar to the specified value.
     def set(value)
       STM.possibly_atomically do
         STM.get_current_transaction.set_value(self, value)
@@ -508,12 +508,12 @@ module STM
       return
     end
 
-    # Internal: ...
+    # ...
     def check_clean(transaction)
       raise Restart if @modified > transaction.start
     end
 
-    # Internal: ...
+    # ...
     def update_real_value(value)
       @real_value = value
       @waiters.each do |w|
@@ -523,9 +523,9 @@ module STM
   end
 
 
-  # Internal: ...
+  # ...
   class Watcher
-    # Internal: ...
+    # ...
     attr_reader :watched_vars
     attr_accessor :modified, :notifier_waiter, :notifier_thread
 
@@ -560,7 +560,7 @@ module STM
   end
 
 
-  # Public: TBD
+  # TBD
   #
   # Note that bad things will happen if the block given to this method tries to
   # return or do other flow-interrupting things. A future version will allow
@@ -642,7 +642,7 @@ module STM
   end
 
 
-  def self.previously(toplevel=False)
+  def self.previously(toplevel = false)
     current = get_current_transaction
     if toplevel
       current = transaction.base
@@ -666,7 +666,7 @@ module STM
   end
 
 
-  # Internal: ...
+  # ...
   class WatchPartialArguments
     def initialize(proc)
       if proc.nil?
