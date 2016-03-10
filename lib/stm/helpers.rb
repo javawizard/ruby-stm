@@ -55,6 +55,24 @@ module STM
             instance_variable_get(:"@#{name}").set(value)
           end
         end
+
+        names
+      end
+
+      private def transactional(method_name)
+        transactionalizer = Module.new do
+          Array(method_name).each do |name|
+            define_method name do |*args|
+              STM.atomically do
+                super
+              end
+            end
+          end
+        end
+
+        prepend(transactionalizer)
+
+        method_name
       end
     end
   end

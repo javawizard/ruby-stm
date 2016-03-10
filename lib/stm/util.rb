@@ -2,6 +2,8 @@
 require_relative 'core'
 
 module STM
+  # TBD: Moved to STM::Helpers
+  #
   # Public: Replace the named method with a wrapper that runs the body of the
   # method in a transaction. This can be used like:
   #
@@ -25,8 +27,8 @@ module STM
   def self.transactional(method_name)
     raise NotImplementedError
   end
-  
-  
+
+
   def self.wait_until(seconds: nil, time: nil)
     STM.atomically do
       unless yield
@@ -38,19 +40,19 @@ module STM
       end
     end
   end
-  
-  
+
+
   class ChangesOnlyPartialArguments
     def initialize(proc)
       @proc = proc
     end
-    
+
     def according_to(predicate, &predicate_as_block)
       STM.changes_only(@proc, predicate || predicate_as_block)
     end
   end
-  
-  
+
+
   def self.changes_only(proc=nil, according_to: nil, &proc_as_block)
     unless according_to
       return ChangesOnlyPartialArguments.new(proc || proc_as_block)
