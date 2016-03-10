@@ -2,26 +2,26 @@
 require 'set'
 
 module STM
-  @@last_transaction = 0
+  @last_transaction = 0
   GLOBAL_LOCK = Mutex.new
-  
+
   # Internal: ...
   def self.last_transaction
-    @@last_transaction
+    @last_transaction
   end
-  
+
   def self.last_transaction= value
-    @@last_transaction = value
+    @last_transaction = value
   end
-  
-  
+
+
   # Internal: Exception raised when a transaction needs to restart. This
   # happens when an attempt is made to read a variable that has been modified
   # since the transaction started. It also happens just after the transaction
   # has finished blocking in response to a TryLater.
   class Restart < Exception
   end
-  
+
   # Internal: Exception Raised when a transaction should retry at some later
   # point, when at least one of the variables it accessed has been modified.
   # This happens when try_later() is called, and causes the toplevel
@@ -30,8 +30,8 @@ module STM
   # into a _Restart.
   class TryLater < Exception
   end
-  
-  
+
+
   # Internal: Set the current thread-local transaction to the specified
   # value.
   def self.set_current_transaction(transaction)
@@ -39,13 +39,13 @@ module STM
     # of e.g. singleton instances. Not at all...
     Thread.current[:a_really_long_and_unlikely_to_be_reused_stm_symbol] = transaction
   end
-  
+
   # Internal: Get and return the current thread-local transaction, or return
   # nil if there isn't currently a transaction.
   def self.try_to_get_current_transaction
     Thread.current[:a_really_long_and_unlikely_to_be_reused_stm_symbol]
   end
-  
+
   # Internal: Get and return the current thread-local transaction, or raise an
   # exception if there isn't currently a transaction.
   def self.get_current_transaction
@@ -54,7 +54,7 @@ module STM
     raise "No current transaction" unless transaction
     transaction
   end
-  
+
   # Internal: Run a block with the current transaction set to the specified
   # transaction, then restore the current transaction to what it was previously
   # at the end of the block.
@@ -68,8 +68,8 @@ module STM
     end
     result
   end
-  
-  
+
+
   # Internal: ...
   #
   # This was actually a superclass in the Python version that had several
@@ -90,7 +90,7 @@ module STM
       @condition = ConditionVariable.new
       @resume_at = resume_at
     end
-    
+
     def wait
       if @resume_at.nil?
         delay = nil
@@ -106,13 +106,13 @@ module STM
         @condition.wait(@mutex, delay)
       end
     end
-    
+
     def notify
       @condition.broadcast
     end
   end
-  
-  
+
+
   # Internal: ...
   #
   # TODO: Make this a single thread that holds a priority queue of all
@@ -135,22 +135,22 @@ module STM
         end
       end
     end
-    
+
     # Internal: For compatibility with Transaction.modified_set
     def watchers
       [@watcher]
     end
-    
+
     # Internal: For compatibility with Transaction.modified_set
     def check_clean
     end
   end
-  
-  
+
+
   # Internal: ...
   class Transaction
     attr_reader :read_set, :modified_set, :proposed_watchers, :resume_at, :watcher_resume_at
-    
+
     def initialize
       @var_cache = {}
       @watchers_cache = {}
@@ -165,27 +165,27 @@ module STM
       @resume_at = nil
       @watcher_resume_at = nil
     end
-    
+
     def values_to_check_for_cleanliness
       @read_set | @write_set | @modified_set | @watchers_changed_set | @watched_vars_changed_set
     end
-    
+
     def load_value(var)
       raise NotImplementedError
     end
-    
+
     def load_watchers(var)
       raise NotImplementedError
     end
-    
+
     def load_watched_vars(watcher)
       raise NotImplementedError
     end
-    
+
     def run
       raise NotImplementedError
     end
-    
+
     def get_value(var)
       # TODO: I read somewhere that exceptions are considerably slower than
       # the double lookup caused by this approach. Do some benchmarking to
@@ -197,13 +197,13 @@ module STM
       end
       @var_cache[var]
     end
-    
+
     def set_value(var, value)
       @var_cache[var] = value
       @write_set.add(var)
       @modified_set.add(var)
     end
-    
+
     def get_watchers(var)
       # TODO: Ditto
       unless @watchers_cache.key? var
@@ -212,12 +212,12 @@ module STM
       end
       @watchers_cache[var]
     end
-    
+
     def set_watchers(var, watchers)
       @watchers_changed_set.add(var)
       @watchers_cache[var] = watchers
     end
-    
+
     def get_watched_vars(watcher)
       # TODO: Ditto
       unless @watched_vars_cache.key? watcher
@@ -226,36 +226,36 @@ module STM
       end
       @watched_vars_cache[watcher]
     end
-    
+
     def set_watched_vars(watcher, vars)
       @watched_vars_changed_set.add(watcher)
       @watched_vars_cache[watcher] = vars
     end
-    
+
     def update_resume_at(resume_at)
       @resume_at = [resume_at, @resume_at || resume_at].min
       @parent.update_resume_at(resume_at) if @parent
     end
-    
+
     def update_watcher_resume_at(resume_at)
       @watcher_resume_at = [resume_at, @watcher_resume_at || resume_at].min
       @parent.update_resume_at(resume_at) if @parent
     end
-    
+
     def make_previously
       raise NotImplementedError
     end
-    
+
     def base
       raise NotImplementedError
     end
   end
-  
-  
+
+
   # Internal: ...
   class BaseTransaction < Transaction
     attr_reader :start, :next_start_time
-    
+
     def initialize(overall_start_time, current_start_time, start=nil)
       super()
       @overall_start_time = overall_start_time
@@ -269,32 +269,32 @@ module STM
       @next_start_time = current_start_time
       @start = start
     end
-    
+
     def base
       self
     end
-    
+
     def load_value(var)
       GLOBAL_LOCK.synchronize do
         var.check_clean(self)
         var.real_value
       end
     end
-    
+
     def load_watchers(var)
       GLOBAL_LOCK.synchronize do
         var.check_clean(self)
         Set.new(var.watchers)
       end
     end
-    
+
     def load_watched_vars(watcher)
       GLOBAL_LOCK.synchronize do
         watcher.check_clean(self)
         Set.new(watcher.watched_vars)
       end
     end
-    
+
     def run
       begin
         unless @start
@@ -304,9 +304,9 @@ module STM
             @start = STM.last_transaction
           end
         end
-        
+
         result = yield
-        
+
         commit
         result
       rescue TryLater
@@ -314,7 +314,7 @@ module STM
         try_later_block
       end
     end
-    
+
     def commit
       watchers_to_run = Set.new
       @modified_set.each do |var|
@@ -322,7 +322,7 @@ module STM
       end
       watchers_to_run.merge(@proposed_watchers)
       @proposed_watchers = []
-      
+
       new_watchers_to_run = Set.new
       until watchers_to_run.empty?
         watchers_to_run.each do |watcher|
@@ -340,7 +340,7 @@ module STM
             set_watchers(newly_watched_var, get_watchers(newly_watched_var) + [watcher])
           end
           @resume_watchers_at_cache[watcher] = watcher_transaction.watcher_resume_at
-          
+
           callback_transaction = NestedTransaction.new(self)
           STM.with_current_transaction callback_transaction do
             watcher.run_callback(result)
@@ -352,20 +352,20 @@ module STM
         end
 
         new_watchers_to_run.merge(@proposed_watchers)
-        
+
         watchers_to_run = new_watchers_to_run
         new_watchers_to_run = Set.new
       end
-      
+
       # Commit time!
       GLOBAL_LOCK.synchronize do
         values_to_check_for_cleanliness.each do |item|
           item.check_clean(self)
         end
-        
+
         STM.last_transaction += 1
         modified = STM.last_transaction
-        
+
         @write_set.each do |var|
           var.update_real_value(get_value(var))
           var.modified = modified
@@ -388,7 +388,7 @@ module STM
         end
       end
     end
-      
+
     def try_later_setup
       GLOBAL_LOCK.synchronize do
         values_to_check_for_cleanliness.each do |item|
@@ -401,12 +401,12 @@ module STM
         @try_later_waiter = w
       end
     end
-    
+
     def try_later_block
       w = @try_later_waiter
-      
+
       w.wait()
-      
+
       GLOBAL_LOCK.synchronize do
         @read_set.each do |item|
           item.waiters.delete(w)
@@ -419,16 +419,16 @@ module STM
       else
         @next_start_time = @resume_at
       end
-      
+
       raise Restart
     end
-    
+
     def make_previously
       BaseTransaction.new(@overall_start_time, @current_start_time, @start)
     end
   end
-  
-  
+
+
   # Internal: ...
   class NestedTransaction < Transaction
     attr_reader :base
@@ -438,25 +438,25 @@ module STM
       @parent = parent
       @base = @parent.base
     end
-    
+
     def load_value(var)
       @parent.get_value(var)
     end
-    
+
     def load_watchers(var)
       @parent.get_watchers(var)
     end
-    
+
     def load_watched_vars(watcher)
       @parent.get_watched_vars(watcher)
     end
-    
+
     def run
       result = yield
       commit
       result
     end
-    
+
     def commit
       @write_set.each do |var|
         @parent.set_value(var, @var_cache[var])
@@ -471,20 +471,20 @@ module STM
         @parent.resume_watchers_at_cache[watcher] = @resume_watchers_at_cache[watcher]
       end
     end
-    
+
     def make_previously
       NestedTransaction.new(@parent)
     end
   end
-  
-  
+
+
   # Public: A transactional variable.
   class TVar
     # Internal: ...
     attr_reader :real_value, :watchers, :waiters
     # Internal: ...
     attr_accessor :modified
-    
+
     # Public: Create a TVar with the specified initial value.
     def initialize(value=nil)
       @real_value = value
@@ -492,14 +492,14 @@ module STM
       @waiters = Set.new
       @watchers = Set.new
     end
-    
+
     # Public: Return the current value of this TVar.
     def get
       STM.possibly_atomically do
         STM.get_current_transaction.get_value(self)
       end
     end
-    
+
     # Public: Set the value of this TVar to the specified value.
     def set(value)
       STM.possibly_atomically do
@@ -507,12 +507,12 @@ module STM
       end
       return
     end
-    
+
     # Internal: ...
     def check_clean(transaction)
       raise Restart if @modified > transaction.start
     end
-    
+
     # Internal: ...
     def update_real_value(value)
       @real_value = value
@@ -521,14 +521,14 @@ module STM
       end
     end
   end
-  
-  
+
+
   # Internal: ...
   class Watcher
     # Internal: ...
     attr_reader :watched_vars
     attr_accessor :modified, :notifier_waiter, :notifier_thread
-    
+
     def initialize(proc, callback)
       @proc = proc
       @callback = callback
@@ -545,21 +545,21 @@ module STM
       # problem as I'm making it out to be... Needs some more investigation.
       @watched_vars = Set.new
     end
-    
+
     def check_clean(transaction)
       raise Restart if @modified > transaction.start
     end
-    
+
     def run_watcher
       @proc.call
     end
-    
+
     def run_callback(value)
       @callback.call(value)
     end
   end
-  
-  
+
+
   # Public: TBD
   #
   # Note that bad things will happen if the block given to this method tries to
@@ -591,8 +591,8 @@ module STM
       end
     end
   end
-  
-  
+
+
   def self.possibly_atomically(&block)
     if try_to_get_current_transaction
       block.call
@@ -600,13 +600,13 @@ module STM
       atomically(&block)
     end
   end
-  
-  
+
+
   def self.try_later
     raise TryLater
   end
-  
-  
+
+
   def self.elapsed(seconds: nil, time: nil)
     if seconds && time
       raise ArgumentError("Only one of seconds and time can be specified")
@@ -629,8 +629,8 @@ module STM
       end
     end
   end
-  
-  
+
+
   def self.or_else(*procs)
     procs.each do |proc|
       begin
@@ -640,8 +640,8 @@ module STM
     end
     try_later
   end
-  
-  
+
+
   def self.previously(toplevel=False)
     current = get_current_transaction
     if toplevel
@@ -664,8 +664,8 @@ module STM
       end
     end
   end
-  
-  
+
+
   # Internal: ...
   class WatchPartialArguments
     def initialize(proc)
@@ -674,13 +674,13 @@ module STM
       end
       @function = proc
     end
-    
+
     def callback(callback=nil, &callback_as_proc)
       STM.watch(@function, callback || callback_as_proc)
     end
   end
-  
-  
+
+
   def self.watch(proc=nil, callback=nil, &proc_as_block)
     if callback.nil?
       return WatchPartialArguments.new(proc || proc_as_block)
