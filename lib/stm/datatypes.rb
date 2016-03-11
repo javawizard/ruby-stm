@@ -127,7 +127,7 @@ class STM::BroadcastEndpoint
     next_var.get.nil?
   end
 
-  def duplicate
+  def dup
     BroadcastEndpoint.new(@queue, next_var, read)
   end
 
