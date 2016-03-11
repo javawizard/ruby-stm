@@ -35,12 +35,12 @@ module STM
     module ClassMethods
       private def attr_transactional(*names)
         initializer = Module.new do
-          def initialize(*args)
+          define_method :initialize do |*args, &block|
             names.each do |name|
               instance_variable_set(:"@#{name}", STM::TVar.new)
             end
 
-            super
+            super(*args, &block)
           end
         end
 
@@ -60,11 +60,12 @@ module STM
       end
 
       private def transactional(method_name)
+
         transactionalizer = Module.new do
           Array(method_name).each do |name|
-            define_method name do |*args|
+            define_method name do |*args, &block|
               STM.atomically do
-                super
+                super(*args, &block)
               end
             end
           end
